@@ -11,8 +11,8 @@ import sys
 
 from fractions import Fraction
 
-class tp1:
 
+class tp1:
     def __init__(self) -> None:
         self.exercices: dict[str, Callable] = {
             "1.1": self.exercice1_1,
@@ -29,7 +29,6 @@ class tp1:
             "7.2": self.exercice7_2,
             "7.3": self.exercice7_3,
         }
-
 
     def run(self) -> int:
         while True:
@@ -139,7 +138,10 @@ class tp1:
         print("produit :", petite * grande)
         for x in (petite, grande):
             residu = x * x - 1e8 * x + 1
-        print(f"residu : {residu:.1e}, soit {residu / max(x * x, 1.0):.1e} en relatif")
+        print(
+            f"residu : {residu:.1e},"
+            f"soit {residu / max(x * x, 1.0):.1e} en relatif"
+        )
         return 0
 
     def exercice7_3(self) -> int:
@@ -155,6 +157,7 @@ class tp1:
 def presque_egaux(a, b, tolerance=1e-9):
     return abs(a - b) <= tolerance
 
+
 def nombre_de_chiffres(n):
     compte: int = 1
 
@@ -163,7 +166,8 @@ def nombre_de_chiffres(n):
         compte += 1
     return compte
 
-def heron(a: int , tolerance: float = 1e-12) -> float:
+
+def heron(a: int, tolerance: float = 1e-12) -> float:
     if a < 0:
         raise ValueError(
             "pas de racine carrée réelle pour un nombre négatif"
@@ -175,9 +179,10 @@ def heron(a: int , tolerance: float = 1e-12) -> float:
     while True:
         suivant: float = 0.5 * (x + a / x)
         tours += 1
-        if abs(suivant -x <= tolerance * abs(suivant)):
+        if abs(suivant - x <= tolerance * abs(suivant)):
             return suivant
         x = suivant
+
 
 def vers_binaire(n: int) -> str:
     if n == 0:
@@ -188,12 +193,14 @@ def vers_binaire(n: int) -> str:
         n //= 2
     return chiffres
 
+
 def racines_naif(a: float, b: float, c: float) -> tuple[float, float]:
     delta: float = b * b - 4 * a * c
     if delta < 0:
         raise ValueError("pas de racine réelle")
-    r  = math.sqrt(delta)
-    return (-b -r) / (2 * a), (-b + r) / (2 * a)
+    r = math.sqrt(delta)
+    return (-b - r) / (2 * a), (-b + r) / (2 * a)
+
 
 def racines(a: float, b: float, c: float) -> tuple[float, float]:
     delta: float = b * b - 4 * a * c
@@ -207,5 +214,6 @@ def racines(a: float, b: float, c: float) -> tuple[float, float]:
     autre: float = c / (a * sure)
     return min(sure, autre), max(sure, autre)
 
-if __name__=="__main__":
+
+if __name__ == "__main__":
     tp1().run()
