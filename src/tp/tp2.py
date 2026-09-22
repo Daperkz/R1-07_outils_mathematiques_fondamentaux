@@ -8,7 +8,6 @@ from typing import Callable
 
 import time
 
-
 class tp2:
     def __init__(self) -> None:
         self.exercices: dict[str, Callable] = {
