@@ -1,5 +1,6 @@
 # ==============================================================================
-# Outils Mathématiques Fondamentaux
+# tp - Outils Mathématiques Fondamentaux
+# August CONCHIN
 #
 # tp3 - Polynômes et fonctions
 # ==============================================================================

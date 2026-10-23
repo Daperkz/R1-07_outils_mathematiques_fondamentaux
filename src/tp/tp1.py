@@ -1,5 +1,6 @@
 # ==============================================================================
-# Outils Mathématiques Fondamentaux
+# tp - Outils Mathématiques Fondamentaux
+# August CONCHIN
 #
 # tp1 - Calcul numérique
 # ==============================================================================
