@@ -9,3 +9,5 @@ README
 
 ## Membres du projet : 
 - Auguste [@Daperkz](https://github.com/Daperkz)
+- Sami [@sami9z](https://github.com/sami9z)
+- Louay [@]
