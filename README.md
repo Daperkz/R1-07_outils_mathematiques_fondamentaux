@@ -8,7 +8,7 @@ README
 # R1-07_outils_mathematiques_fondamentaux
 
 Projet réalisé par :
-- **August CONCHIN**
+- **August CONCHIN (Daperkz)**
 - **Louay BEN AHMED**
 - **Sami BEN SLIMA**
 
