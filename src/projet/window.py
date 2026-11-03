@@ -2,6 +2,7 @@
 # Projet - Outils Mathématiques Fondamentaux
 # August CONCHIN
 # Louay BEN AHMED
+# Sami BEN SLIMA
 #
 # window
 # ==============================================================================
@@ -22,7 +23,21 @@ FOREGROUND = (220, 230, 255)
 
 
 class Window:
+    """
+    Gère la fenêtre et la boucle d'affichage de la visualisation.
+    """
+
     def run(self, app: App, edges: tuple[tuple[int, int], ...]) -> int:
+        """Lance la boucle graphique et dessine les arêtes projetées.
+
+        Args:
+            app: Application qui traite les événements et met à jour les
+                sommets projetés.
+            edges: Couples d'indices de sommets définissant les arêtes à tracer.
+
+        Returns:
+            Le code de sortie du programme, égal à 0 après la fermeture.
+        """
         pg.init()
         screen: pg.Surface = pg.display.set_mode((WIDTH, HEIGHT))
         pg.display.set_caption("Custom matrix - wireframe cube")

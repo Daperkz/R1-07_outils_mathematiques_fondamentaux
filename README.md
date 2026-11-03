@@ -39,20 +39,28 @@ Le but du projet est d'afficher des formes 3D dans une fenêtre Pygame, de les f
    Quand on clique sur l'objet 3D dans la fenêtre, on utilise plusieurs outils mathématiques du module :
    - **Déterminant 2D (`determinant_2d` et `is_face_visible`)** : calcule le déterminant 2x2 des sommets projetés pour savoir si la face est tournée vers nous ou si elle est cachée à l'arrière.
    - **Lancer de rayon (`is_point_inside`)** : trace une demi-droite horizontale depuis le clic souris et compte combien de côtés de la face elle coupe (impair = on a bien cliqué dans la face).
-   - **Formule du lacet (`polygon_area`)** : calcule l'aire exacte de la face à l'écran en pixels².
+   - **Formule du lacet (`polygon_area`)** : calcule l'aire exacte de la face à l'écran en pixels.
    - **Pivot de Gauss avec pivot partiel (`solve_gauss` et `intersect_ray_face`)** : comme l'écran est en 2D, on a perdu la profondeur. On résout donc un système de 3 équations à 3 inconnues `(x, y, z)` (les 2 équations de la droite du clic souris et l'équation du plan de la face) pour retrouver directement les coordonnées 3D `(x, y, z)` de l'endroit cliqué sur la face.
 
-### Autres fonctionnalités du projet
-- **[À compléter par August]** : *(explication de la classe `Matrix`, des rotations 3D et de la projection perspective)*
+3. **Transformations matricielles et affichage** :
+   La classe `Matrix` représente les matrices et permet de les multiplier, de les transposer et de construire les matrices de rotation autour des axes X, Y et Z. Ces opérations, réalisées sans `numpy`, servent à transformer les sommets des objets.
+
+   La classe `App` gère les rotations commandées au clavier, la distance de la caméra et la projection en perspective des points 3D sur l'écran. Elle transmet également les clics souris aux calculs géométriques. La classe `Window` crée la fenêtre Pygame, gère la boucle d'affichage et dessine les arêtes.
+
 - **[À compléter par Sami]** : *(explication du menu / choix des figures dans l'interface graphique)*
 
 ---
 
 ## Comment lancer le projet
 
-Installer `pygame` :
+Mettre en place une venv:
 ```bash
-pip install pygame
+python3 -m venv .venv
+source ./.venv/bin/activate
+```
+Installer les dépendances :
+```bash
+pip install -r requirements.txt
 ```
 
 Lancer le programme depuis la racine du projet :
@@ -65,7 +73,7 @@ python -m src.projet
 - `Q` / `D` : tourner sur l'axe Y
 - `A` / `E` : tourner sur l'axe Z
 - `Flèche Haut` / `Flèche Bas` : zoomer / dézoomer
-- `Clic gauche` sur une face : affiche dans le titre de la fenêtre (et dans le terminal) la face touchée, son aire en pixels² et les coordonnées 3D `(x, y, z)` du point cliqué trouvées par le pivot de Gauss.
+- `Clic gauche` sur une face : affiche dans le titre de la fenêtre (et dans le terminal) la face touchée, son aire en pixels et les coordonnées 3D `(x, y, z)` du point cliqué trouvées par le pivot de Gauss.
 - `[À compléter par Sami pour les contrôles du choix de figure]`
 - `Échap` : quitter
 
@@ -87,7 +95,7 @@ python -m src.projet
 ## Répartition du travail
 
 - **Louay BEN AHMED** : interpréteur de fichiers `.txt` (`parser.py`), création des formes 3D dans `scenes/` (`cube.txt`, `pyramid.txt`, `diamond.txt`, `house.txt`), et calculs géométriques / pivot de Gauss au clic souris (`geometry.py`).
-- **August CONCHIN** : **[À compléter par August]**
+- **August CONCHIN** : fourniture de mes exercices réalisés en TP (`tp1.py` à `tp4.py`), création de la classe `Matrix` et mise en place de la base du projet avec les classes `App` et `Window`.
 - **Sami BEN SLIMA** : **[À compléter par Sami]**
 
 ### Utilisation de l'IA
