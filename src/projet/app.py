@@ -23,7 +23,7 @@ EDGES = (
     (4, 5), (5, 6), (6, 7), (7, 4),
     (0, 4), (1, 5), (2, 6), (3, 7),
 )
-ZOOM_SPEED: float = 3.0
+
 
 class App:
     def __init__(self) -> None:
@@ -60,9 +60,10 @@ class App:
             @ Matrix.rotation_y(self.angles[1])
             @ Matrix.rotation_x(self.angles[0])
         )
+        zoom_speed: float = 3.0 * delta_time
         self.camera_distance += (
             keys[pg.K_DOWN] - keys[pg.K_UP]
-        ) * ZOOM_SPEED * delta_time
+        ) * zoom_speed
         self.camera_distance = min(20.0, max(1, self.camera_distance))
         return [
             self._project(rotation @ Matrix([[x], [y], [z]]))
