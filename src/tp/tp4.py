@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Callable
 import random
 
+
 class tp4:
     def __init__(self) -> None:
         self.exercices: dict[str, Callable] = {
@@ -33,18 +34,19 @@ class tp4:
         return 0
 
     def getExercice1(self) -> None:
-        A: Matrix = Matrix([
+        a: Matrix = Matrix([
             [1, 2, 2],
             [1, 3, -2],
             [3, 5, 8]
         ])
+        print(a)
         print(Matrix([[1, 2, 3], [4, 5, 6]]).T)
 
     def getExercice2(self) -> None:
         identite: Matrix = Matrix([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-        A: Matrix = Matrix([[1, 2, 2], [1, 3, -2], [3, 5, 8]])
+        a: Matrix = Matrix([[1, 2, 2], [1, 3, -2], [3, 5, 8]])
 
-        print(A * identite == A)
+        print(a * identite == a)
         print(Matrix([[1, 2], [3, 4]]) * Matrix([[0, 1], [1, 0]]))
 
     def getExercice3(self) -> None:
@@ -57,22 +59,24 @@ class tp4:
         print([round(v, 10) for v in verif])
         pass
 
+
 def matrice_aleatoire(size: int) -> Matrix:
     return Matrix([[random.random() for _ in range(size)] for _ in range(size)])
 
-#import numpy as np
+# import numpy as np
 #
-#A = np.array(
-#    [[1.0, 2.0, 2.0],
-#    [1.0, 3.0, -2.0],
-#    [3.0, 5.0, 8.0]]
-#)
-#b = np.array([2.0, -1.0, 8.0])
+# A = np.array(
+#     [[1.0, 2.0, 2.0],
+#     [1.0, 3.0, -2.0],
+#     [3.0, 5.0, 8.0]]
+# )
+# b = np.array([2.0, -1.0, 8.0])
 #
-#print(A.shape)
-#print(A.T)
-#print(A @ A)
-#print(A * A)
+# print(A.shape)
+# print(A.T)
+# print(A @ A)
+# print(A * A)
+
 
 class Matrix:
     def __init__(self, data: list[list[float]], **kwargs) -> None:
@@ -124,9 +128,13 @@ class Matrix:
         return self.data[i]
 
     def __setitem__(self, i: int, n: list[float]) -> None:
-        assert isinstance(n, list) == True, "new value isn't the same type"
-        assert len(n) == self.cols, "new value isn't the same lenght as previous"
+        assert isinstance(n, list) is True, "new value isn't the same type"
+        assert len(n) is self.cols, (
+            "new value isn't the"
+            "same lenght as previous"
+        )
         self.data[i] = n
+
 
 def solve(self, b: list[float], tolerance=1e-14):
     """
@@ -153,6 +161,7 @@ def solve(self, b: list[float], tolerance=1e-14):
             somme = somme - m[i][j] * x[j]
         x[i] = somme / m[i][i]
     return x
+
 
 if __name__ == "__main__":
     tp4().run()

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from math import cos, sin
 
+
 class Matrix:
     def __init__(self, data: list[list[float]]) -> None:
         if not data or not data[0]:
@@ -19,7 +20,9 @@ class Matrix:
         if any(len(row) != column_count for row in data):
             raise ValueError("all matrix rows must have the same length")
 
-        self._data: tuple[tuple[float, ...], ...] = tuple(tuple(float(value) for value in row) for row in data)
+        self._data: tuple[tuple[float, ...], ...] = tuple(
+            tuple(float(value) for value in row) for row in data
+        )
         self.rows: int = len(self._data)
         self.columns: int = column_count
 

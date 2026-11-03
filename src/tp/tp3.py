@@ -9,6 +9,7 @@ from typing import Callable, Tuple
 
 import time
 
+
 class tp3:
     def __init__(self) -> None:
         self.exercices: dict[str, Callable] = {
@@ -65,7 +66,8 @@ class tp3:
             b = evaluate(P, 1.0001)
             t_horner = time.perf_counter() - debut
             print(
-                f"degre {degre:>6} : naif {t_naif:.5f} s | horner {t_horner:.5f} s "
+                f"degre {degre:>6} : naif {t_naif:.5f}"
+                f"s | horner {t_horner:.5f} s "
                 f"| rapport {t_naif / t_horner:.1f} | "
                 f"ecart des valeurs {abs(a - b):.2e}"
             )
@@ -82,7 +84,10 @@ class tp3:
             debut = time.perf_counter()
             b = evaluate(P, 3)
             t_horner = time.perf_counter() - debut
-            print(f"degre {degre:>4} : rapport {t_naif / t_horner:.1f} | resultats egaux : {a == b}")
+            print(
+                f"degre {degre:>4} : rapport {t_naif / t_horner:.1f}"
+                f" | resultats egaux : {a == b}"
+            )
         return 0
 
     def getExercice3(self) -> int:
@@ -115,8 +120,8 @@ class tp3:
             print(newton(R, 0))
         except RuntimeError as erreur:
             print("echec :", erreur)
-            return 1;
-        return 0;
+            return 1
+        return 0
 
     def getExercise4_4(self) -> int:
         polynomial: list[float] = [-5.0, -2.0, 0.0, 1.0]
@@ -196,7 +201,9 @@ class tp3:
         return 0
 
     def getExercise8_2(self) -> int:
-        function: Callable[[float], float] = lambda value: 4.0 / (1.0 + value * value)
+        function: Callable[[float], float] = lambda value: (
+            4.0 / (1.0 + value * value)
+        )
         pi_approximation: float = 3.141592653589793
         trapezoid_result: float = trapezoids(function, 0.0, 1.0, 1000)
         simpson_result: float = simpson(function, 0.0, 1.0, 1000)
@@ -211,12 +218,12 @@ class tp3:
         return 0
 
 
-
 def evaluate_naif(P: list[float], x: float) -> float:
     retv: float = 0.0
     for i in range(len(P)):
         retv += P[i] * (x ** i)
     return retv
+
 
 def evaluate(P: list[float], x: float) -> float:
     retv: float = 0.0
@@ -224,10 +231,12 @@ def evaluate(P: list[float], x: float) -> float:
         retv = retv * x + coef
     return retv
 
+
 def deriver(P: list[float]) -> list[float]:
     if len(P) <= 1:
         return [0.0]
     return [i * P[i] for i in range(1, len(P))]
+
 
 def dichotomy(
         f: Callable, a: float, b: float, tolerance: float = 1e-12
@@ -246,6 +255,7 @@ def dichotomy(
     else:
         a = milieu
     return (a + b) / 2
+
 
 def pow2_min_2(x: float) -> float:
     return x * x - 2
@@ -272,6 +282,7 @@ def newton(
         x = suivant
     raise RuntimeError("pas de convergence en {} tours".format(max_round))
 
+
 def newton_trace(P: list[float], depart: float, tours: int) -> list[float]:
     derivee = deriver(P)
     x = float(depart)
@@ -284,14 +295,18 @@ def newton_trace(P: list[float], depart: float, tours: int) -> list[float]:
         trajet.append(x)
     return trajet
 
+
 def add_polynomials(first: list[float], second: list[float]) -> list[float]:
     length: int = max(len(first), len(second))
     result: list[float] = []
     for index in range(length):
         first_coefficient: float = first[index] if index < len(first) else 0.0
-        second_coefficient: float = second[index] if index < len(second) else 0.0
+        second_coefficient: float = (
+            second[index] if index < len(second) else 0.0
+        )
         result.append(first_coefficient + second_coefficient)
     return result or [0.0]
+
 
 def multiply_polynomials(
         first: list[float], second: list[float]
@@ -306,6 +321,7 @@ def multiply_polynomials(
             )
     return result
 
+
 def sine_approx(value: float) -> float:
     result: float = value
     term: float = value
@@ -313,6 +329,7 @@ def sine_approx(value: float) -> float:
         term *= -(value * value) / ((2 * index) * (2 * index + 1))
         result += term
     return result
+
 
 def cosine_approx(value: float) -> float:
     result: float = 1.0
@@ -322,6 +339,7 @@ def cosine_approx(value: float) -> float:
         result += term
     return result
 
+
 def forward_difference(
         function: Callable[[float], float], value: float, step: float
         ) -> float:
@@ -329,12 +347,14 @@ def forward_difference(
         raise ValueError("step doit etre positif")
     return (function(value + step) - function(value)) / step
 
+
 def central_difference(
         function: Callable[[float], float], value: float, step: float
         ) -> float:
     if step <= 0:
         raise ValueError("step doit etre positif")
     return (function(value + step) - function(value - step)) / (2 * step)
+
 
 def rectangles(
         function: Callable[[float], float],
@@ -350,6 +370,7 @@ def rectangles(
         total += function(start + index * step)
     return total * step
 
+
 def trapezoids(
         function: Callable[[float], float],
         start: float,
@@ -363,6 +384,7 @@ def trapezoids(
     for index in range(1, subdivisions):
         total += function(start + index * step)
     return total * step
+
 
 def simpson(
         function: Callable[[float], float],
@@ -379,8 +401,10 @@ def simpson(
         total += coefficient * function(start + index * step)
     return total * step / 3
 
+
 def square(value: float) -> float:
     return value * value
+
 
 if __name__ == "__main__":
     tp3().run()
