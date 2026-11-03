@@ -7,3 +7,5 @@ README
 -->
 # R1-07_outils_mathematiques_fondamentaux
 
+## Membres du projet : 
+- Auguste (@Daperkz)[https://github.com/Daperkz]
