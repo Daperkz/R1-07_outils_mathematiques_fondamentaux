@@ -1,0 +1,40 @@
+# ==============================================================================
+# Maison 3D
+# ==============================================================================
+
+NAME House
+
+VERTEX -1.0 -1.0 -1.0
+VERTEX  1.0 -1.0 -1.0
+VERTEX  1.0  0.5 -1.0
+VERTEX  0.0  1.5 -1.0
+VERTEX -1.0  0.5 -1.0
+VERTEX -1.0 -1.0  1.0
+VERTEX  1.0 -1.0  1.0
+VERTEX  1.0  0.5  1.0
+VERTEX  0.0  1.5  1.0
+VERTEX -1.0  0.5  1.0
+
+EDGE 0 1
+EDGE 1 2
+EDGE 2 3
+EDGE 3 4
+EDGE 4 0
+EDGE 5 6
+EDGE 6 7
+EDGE 7 8
+EDGE 8 9
+EDGE 9 5
+EDGE 0 5
+EDGE 1 6
+EDGE 2 7
+EDGE 3 8
+EDGE 4 9
+
+FACE 0 4 3 2 1
+FACE 5 6 7 8 9
+FACE 0 1 6 5
+FACE 1 2 7 6
+FACE 2 3 8 7
+FACE 3 4 9 8
+FACE 4 0 5 9

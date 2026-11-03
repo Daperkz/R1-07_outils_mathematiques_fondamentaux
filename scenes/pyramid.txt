@@ -1,0 +1,28 @@
+# ==============================================================================
+# Pyramide à base carrée
+# ==============================================================================
+
+NAME Pyramid
+
+VERTEX -1 -1 -1
+VERTEX  1 -1 -1
+VERTEX  1 -1  1
+VERTEX -1 -1  1
+VERTEX  0  1  0
+
+EDGE 0 1
+EDGE 1 2
+EDGE 2 3
+EDGE 3 0
+EDGE 0 4
+EDGE 1 4
+EDGE 2 4
+EDGE 3 4
+
+FACE 0 4 1
+FACE 1 4 2
+FACE 2 4 3
+FACE 3 4 0
+FACE 0 1 2 3
+
+SCALE 1.1

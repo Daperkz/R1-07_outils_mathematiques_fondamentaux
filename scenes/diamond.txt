@@ -1,0 +1,34 @@
+# ==============================================================================
+# Diamant (Octaèdre régulier)
+# ==============================================================================
+
+NAME Diamond
+
+VERTEX  0  1.4  0
+VERTEX -1  0   -1
+VERTEX  1  0   -1
+VERTEX  1  0    1
+VERTEX -1  0    1
+VERTEX  0 -1.4  0
+
+EDGE 0 1
+EDGE 0 2
+EDGE 0 3
+EDGE 0 4
+EDGE 1 2
+EDGE 2 3
+EDGE 3 4
+EDGE 4 1
+EDGE 5 1
+EDGE 5 2
+EDGE 5 3
+EDGE 5 4
+
+FACE 0 2 1
+FACE 0 3 2
+FACE 0 4 3
+FACE 0 1 4
+FACE 5 1 2
+FACE 5 2 3
+FACE 5 3 4
+FACE 5 4 1
