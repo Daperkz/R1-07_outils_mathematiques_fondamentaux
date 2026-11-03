@@ -39,6 +39,7 @@ class Window:
             Le code de sortie du programme, égal à 0 après la fermeture.
         """
         pg.init()
+        pg.font.init()
         screen: pg.Surface = pg.display.set_mode((WIDTH, HEIGHT))
         pg.display.set_caption("Custom matrix - wireframe cube")
         clock: pg.time.Clock = pg.time.Clock()
@@ -53,10 +54,14 @@ class Window:
 
             projected = app.update(delta_time, pg.key.get_pressed())
             screen.fill(BACKGROUND)
-            for start, end in edges:
-                first, second = projected[start], projected[end]
-                if first is not None and second is not None:
-                    pg.draw.line(screen, FOREGROUND, first, second, 2)
+
+            if hasattr(app, "draw"):
+                app.draw(screen)
+            else:
+                for start, end in edges:
+                    first, second = projected[start], projected[end]
+                    if first is not None and second is not None:
+                        pg.draw.line(screen, FOREGROUND, first, second, 2)
 
             pg.display.flip()
 
