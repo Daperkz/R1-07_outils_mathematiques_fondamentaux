@@ -18,18 +18,34 @@ if __package__ is None or __package__ == "":
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
     from src.projet.geometry import (
+        distance_to_segment,
         is_face_visible,
         is_point_inside,
     )
     from src.projet.matrix import Matrix
+    from src.projet.mesh import (
+        AddedCube,
+        add_cube_on_face as add_cube_to_mesh,
+        get_cube_data,
+        get_cube_for_face,
+        remove_cube_at_face as remove_cube_from_mesh,
+    )
     from src.projet.parser import Scene, load_scene
     from src.projet.window import HEIGHT, WIDTH, Window
 else:
     from .geometry import (
+        distance_to_segment,
         is_face_visible,
         is_point_inside,
     )
     from .matrix import Matrix
+    from .mesh import (
+        AddedCube,
+        add_cube_on_face as add_cube_to_mesh,
+        get_cube_data,
+        get_cube_for_face,
+        remove_cube_at_face as remove_cube_from_mesh,
+    )
     from .parser import Scene, load_scene
     from .window import HEIGHT, WIDTH, Window
 
@@ -50,7 +66,7 @@ class App:
         self.vertices: list[tuple[float, float, float]] = list(SCENE.vertices)
         self.edges: list[tuple[int, int]] = list(SCENE.edges)
         self.faces: list[tuple[int, ...]] = list(SCENE.faces)
-        self.added_cubes: list[dict] = []
+        self.added_cubes: list[AddedCube] = []
 
         self.angles: list[float] = [0.0, 0.0, 0.0]
         self.camera_distance: float = 4.0
@@ -88,26 +104,6 @@ class App:
         self._small_font: pg.font.Font | None = None
         self._info_font: pg.font.Font | None = None
 
-    @staticmethod
-    def _dist_to_segment(
-        p: tuple[int, int], a: tuple[int, int], b: tuple[int, int]
-    ) -> float:
-        """Calcule la distance entre un point 2D et un segment de droite
-        [a, b].
-        """
-        px, py = p
-        ax, ay = a
-        bx, by = b
-        dx = bx - ax
-        dy = by - ay
-        l2 = dx * dx + dy * dy
-        if l2 == 0:
-            return ((px - ax) ** 2 + (py - ay) ** 2) ** 0.5
-        t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / l2))
-        proj_x = ax + t * dx
-        proj_y = ay + t * dy
-        return ((px - proj_x) ** 2 + (py - proj_y) ** 2) ** 0.5
-
     def _project(self, point: Matrix) -> tuple[int, int] | None:
         depth: float = point[2][0] + self.camera_distance
         if depth <= 0.1:
@@ -124,30 +120,18 @@ class App:
         """Retourne l'ensemble des sommets et des arêtes appartenant à un
         cube donné.
         """
-        if cube_idx is None:
-            return set(), set()
-        if cube_idx == 0:
-            verts = set(range(len(SCENE.vertices)))
-            edges = set(SCENE.edges) | {(b, a) for a, b in SCENE.edges}
-            return verts, edges
-        if 1 <= cube_idx <= len(self.added_cubes):
-            cube = self.added_cubes[cube_idx - 1]
-            i0, i1, i2, i3 = cube["base_face"]
-            verts = set(cube["base_face"]) | set(cube["new_verts"])
-            base_edges = [(i0, i1), (i1, i2), (i2, i3), (i3, i0)]
-            raw_edges = set(cube["added_edges"]) | set(base_edges)
-            edges = raw_edges | {(b, a) for a, b in raw_edges}
-            return verts, edges
-        return set(), set()
+        return get_cube_data(
+            len(SCENE.vertices),
+            SCENE.edges,
+            self.added_cubes,
+            cube_idx,
+        )
 
     def _get_cube_for_face(self, face: tuple[int, ...]) -> int:
         """Retourne l'indice du cube (0 pour le cube de base, 1+ pour les
         ajoutés) auquel appartient la face.
         """
-        for idx in range(len(self.added_cubes) - 1, -1, -1):
-            if any(v in self.added_cubes[idx]["new_verts"] for v in face):
-                return idx + 1
-        return 0
+        return get_cube_for_face(self.added_cubes, face)
 
     def _find_cube_at_pos(self, mouse_pos: tuple[int, int]) -> int | None:
         """Trouve l'indice du cube sous le curseur de la souris."""
@@ -184,7 +168,7 @@ class App:
             p1 = self._projected_vertices[s]
             p2 = self._projected_vertices[e]
             if p1 is not None and p2 is not None:
-                d = self._dist_to_segment(mouse_pos, p1, p2)
+                d = distance_to_segment(mouse_pos, p1, p2)
                 if d < 12 and d < min_dist:
                     min_dist = d
                     best_edge = (s, e)
@@ -202,93 +186,14 @@ class App:
 
     def add_cube_on_face(self, face_idx: int) -> None:
         """Ajoute un nouveau cube de taille par défaut sur la face spécifiée."""
-        if face_idx < 0 or face_idx >= len(self.faces):
+        if not add_cube_to_mesh(
+            self.vertices,
+            self.edges,
+            self.faces,
+            self.added_cubes,
+            face_idx,
+        ):
             return
-
-        face = self.faces[face_idx]
-        if len(face) < 4:
-            return
-
-        pts = [self.vertices[i] for i in face]
-        p0, p1, p2, p3 = pts[0], pts[1], pts[2], pts[3]
-
-        # Taille de côté par défaut (distance entre les 2 premiers sommets
-        # de la face).
-        s = (
-            (p1[0] - p0[0]) ** 2
-            + (p1[1] - p0[1]) ** 2
-            + (p1[2] - p0[2]) ** 2
-        ) ** 0.5
-        if s <= 0.001:
-            s = 2.0
-
-        # Normale unitaire
-        u = (p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2])
-        w = (p3[0] - p0[0], p3[1] - p0[1], p3[2] - p0[2])
-        nx = u[1] * w[2] - u[2] * w[1]
-        ny = u[2] * w[0] - u[0] * w[2]
-        nz = u[0] * w[1] - u[1] * w[0]
-        norm = (nx * nx + ny * ny + nz * nz) ** 0.5
-        if norm == 0:
-            n = (0.0, 0.0, 1.0)
-        else:
-            n = (nx / norm, ny / norm, nz / norm)
-
-        # Assurer l'orientation sortante par rapport au centre de l'objet
-        cx = sum(v[0] for v in self.vertices) / len(self.vertices)
-        cy = sum(v[1] for v in self.vertices) / len(self.vertices)
-        cz = sum(v[2] for v in self.vertices) / len(self.vertices)
-        fcx = (p0[0] + p1[0] + p2[0] + p3[0]) / 4
-        fcy = (p0[1] + p1[1] + p2[1] + p3[1]) / 4
-        fcz = (p0[2] + p1[2] + p2[2] + p3[2]) / 4
-        dot = n[0] * (fcx - cx) + n[1] * (fcy - cy) + n[2] * (fcz - cz)
-        if dot < 0:
-            n = (-n[0], -n[1], -n[2])
-
-        # Création des 4 nouveaux sommets extrudés
-        base_idx = len(self.vertices)
-        new_v = [
-            (p0[0] + s * n[0], p0[1] + s * n[1], p0[2] + s * n[2]),
-            (p1[0] + s * n[0], p1[1] + s * n[1], p1[2] + s * n[2]),
-            (p2[0] + s * n[0], p2[1] + s * n[1], p2[2] + s * n[2]),
-            (p3[0] + s * n[0], p3[1] + s * n[1], p3[2] + s * n[2]),
-        ]
-        self.vertices.extend(new_v)
-
-        i0, i1, i2, i3 = face[0], face[1], face[2], face[3]
-        k0, k1, k2, k3 = base_idx, base_idx + 1, base_idx + 2, base_idx + 3
-
-        # Arêtes reliant la face aux nouveaux sommets et arêtes supérieures
-        new_edges = [
-            (i0, k0),
-            (i1, k1),
-            (i2, k2),
-            (i3, k3),
-            (k0, k1),
-            (k1, k2),
-            (k2, k3),
-            (k3, k0),
-        ]
-        self.edges.extend(new_edges)
-
-        # Remplacement de la face par les 5 nouvelles faces du cube
-        self.faces.pop(face_idx)
-        new_faces = [
-            (k0, k1, k2, k3),
-            (i0, i1, k1, k0),
-            (i1, i2, k2, k1),
-            (i2, i3, k3, k2),
-            (i3, i0, k0, k3),
-        ]
-        self.faces.extend(new_faces)
-
-        # Enregistrement du cube ajouté pour permettre son retrait ultérieur
-        self.added_cubes.append({
-            "base_face": tuple(face),
-            "new_verts": set(range(base_idx, base_idx + 4)),
-            "added_edges": new_edges,
-            "added_faces": new_faces,
-        })
 
         self.hovered_face = None
         self._recompute_projection()
@@ -316,7 +221,13 @@ class App:
         """Retire le cube associé à la face sélectionnée (ou le dernier cube
         ajouté).
         """
-        if not self.added_cubes:
+        if not remove_cube_from_mesh(
+            self.vertices,
+            self.edges,
+            self.faces,
+            self.added_cubes,
+            face_idx,
+        ):
             info = (
                 "Impossible de retirer le cube principal : "
                 "au moins 1 cube requis"
@@ -324,41 +235,6 @@ class App:
             pg.display.set_caption(info)
             print(info)
             return False
-
-        if face_idx < 0 or face_idx >= len(self.faces):
-            target_cube_idx = len(self.added_cubes) - 1
-        else:
-            clicked_face = self.faces[face_idx]
-            target_cube_idx = -1
-            # Chercher dans quel cube ajouté cette face est présente
-            for idx in range(len(self.added_cubes) - 1, -1, -1):
-                cube = self.added_cubes[idx]
-                if any(v in cube["new_verts"] for v in clicked_face):
-                    target_cube_idx = idx
-                    break
-
-            if target_cube_idx == -1:
-                target_cube_idx = len(self.added_cubes) - 1
-
-        # Retirer tous les cubes dépendants du dernier jusqu'à target_cube_idx
-        for _ in range(len(self.added_cubes) - 1, target_cube_idx - 1, -1):
-            cube = self.added_cubes.pop()
-            # 1. Retirer les 5 faces du cube
-            for f in cube["added_faces"]:
-                if f in self.faces:
-                    self.faces.remove(f)
-            # 2. Restaurer la face de base dans l'objet parent
-            self.faces.append(cube["base_face"])
-            # 3. Retirer les 8 arêtes ajoutées
-            for e in cube["added_edges"]:
-                if e in self.edges:
-                    self.edges.remove(e)
-                elif (e[1], e[0]) in self.edges:
-                    self.edges.remove((e[1], e[0]))
-            # 4. Retirer les 4 sommets
-            for _ in range(4):
-                if self.vertices:
-                    self.vertices.pop()
 
         self.hovered_face = None
         self.hovered_cube = None
@@ -582,7 +458,7 @@ class App:
                     p1 = self._projected_vertices[s]
                     p2 = self._projected_vertices[e]
                     if p1 is not None and p2 is not None:
-                        d = self._dist_to_segment(mouse_pos, p1, p2)
+                        d = distance_to_segment(mouse_pos, p1, p2)
                         if d < min_dist:
                             min_dist = d
                             closest_edge = idx
@@ -670,7 +546,7 @@ class App:
                 p1 = self._projected_vertices[s]
                 p2 = self._projected_vertices[e]
                 if p1 is not None and p2 is not None:
-                    d = self._dist_to_segment(mouse_pos, p1, p2)
+                    d = distance_to_segment(mouse_pos, p1, p2)
                     if d < 15 and d < min_dist:
                         min_dist = d
                         self.hovered_edge = idx

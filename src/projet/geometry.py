@@ -10,6 +10,29 @@
 from __future__ import annotations
 
 
+def distance_to_segment(
+    point: tuple[int, int],
+    start: tuple[int, int],
+    end: tuple[int, int],
+) -> float:
+    """Calcule la distance entre un point 2D et un segment."""
+    px, py = point
+    ax, ay = start
+    bx, by = end
+    dx = bx - ax
+    dy = by - ay
+    length_squared = dx * dx + dy * dy
+    if length_squared == 0:
+        return ((px - ax) ** 2 + (py - ay) ** 2) ** 0.5
+    t = max(
+        0.0,
+        min(1.0, ((px - ax) * dx + (py - ay) * dy) / length_squared),
+    )
+    projected_x = ax + t * dx
+    projected_y = ay + t * dy
+    return ((px - projected_x) ** 2 + (py - projected_y) ** 2) ** 0.5
+
+
 def determinant_2d(
     a: tuple[int, int], b: tuple[int, int], c: tuple[int, int]
 ) -> int:

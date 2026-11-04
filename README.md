@@ -1,6 +1,9 @@
 <!--
 ================================================================================
-Outils Mathématiques Fondamentaux
+Projet - Outils Mathématiques Fondamentaux
+August CONCHIN
+Louay BEN AHMED
+Sami BEN SLIMA
 
 README
 ================================================================================
