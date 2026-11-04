@@ -59,12 +59,13 @@ class App:
         )
         self._projected_vertices: list[tuple[int, int] | None] = []
 
-        # Modes et états de sélection ("cube", "edge", "point", ou None)
+        # Modes et états de sélection ("cube", "edge", "point", "all", ou None)
         self.selection_mode: str | None = None
-        self.selected_cube: bool = False
+        self.selected_cube_idx: int | None = None
         self.selected_edge: int | None = None
         self.selected_point: int | None = None
         self.selected_face: tuple[int, float, float, float, float] | None = None
+        self.hovered_cube: int | None = None
         self.hovered_edge: int | None = None
         self.hovered_point: int | None = None
 
@@ -73,10 +74,11 @@ class App:
         self.remove_cube_mode: bool = False
         self.hovered_face: tuple[int, list[tuple[int, int]]] | None = None
 
-        # Rectangles des 3 boutons de sélection en haut à gauche
-        self.btn_cube = pg.Rect(15, 15, 85, 32)
-        self.btn_edge = pg.Rect(108, 15, 85, 32)
-        self.btn_point = pg.Rect(201, 15, 85, 32)
+        # Rectangles des 4 boutons de sélection en haut à gauche
+        self.btn_all = pg.Rect(15, 15, 80, 32)
+        self.btn_cube = pg.Rect(103, 15, 80, 32)
+        self.btn_edge = pg.Rect(191, 15, 80, 32)
+        self.btn_point = pg.Rect(279, 15, 80, 32)
 
         # Rectangles des boutons d'ajout et retrait en haut à droite
         self.btn_add_cube = pg.Rect(WIDTH - 215, 15, 95, 32)
@@ -113,6 +115,84 @@ class App:
         x: float = WIDTH / 2 + point[0][0] * focal_length / depth
         y: float = HEIGHT / 2 - point[1][0] * focal_length / depth
         return round(x), round(y)
+
+    def _get_cube_data(
+        self, cube_idx: int | None
+    ) -> tuple[set[int], set[tuple[int, int]]]:
+        """Retourne l'ensemble des sommets et des arêtes appartenant à un cube donné."""
+        if cube_idx is None:
+            return set(), set()
+        if cube_idx == 0:
+            verts = set(range(len(SCENE.vertices)))
+            edges = set(SCENE.edges) | {(b, a) for a, b in SCENE.edges}
+            return verts, edges
+        if 1 <= cube_idx <= len(self.added_cubes):
+            cube = self.added_cubes[cube_idx - 1]
+            i0, i1, i2, i3 = cube["base_face"]
+            verts = set(cube["base_face"]) | set(cube["new_verts"])
+            base_edges = [(i0, i1), (i1, i2), (i2, i3), (i3, i0)]
+            raw_edges = set(cube["added_edges"]) | set(base_edges)
+            edges = raw_edges | {(b, a) for a, b in raw_edges}
+            return verts, edges
+        return set(), set()
+
+    def _get_cube_for_face(self, face: tuple[int, ...]) -> int:
+        """Retourne l'indice du cube (0 pour le cube de base, 1+ pour les ajoutés) auquel appartient la face."""
+        for idx in range(len(self.added_cubes) - 1, -1, -1):
+            if any(v in self.added_cubes[idx]["new_verts"] for v in face):
+                return idx + 1
+        return 0
+
+    def _find_cube_at_pos(self, mouse_pos: tuple[int, int]) -> int | None:
+        """Trouve l'indice du cube sous le curseur de la souris."""
+        best_z = float("inf")
+        best_face: tuple[int, ...] | None = None
+        for face in self.faces:
+            pts_2d: list[tuple[int, int]] = []
+            for v_idx in face:
+                if v_idx < len(self._projected_vertices):
+                    proj = self._projected_vertices[v_idx]
+                    if proj is None:
+                        break
+                    pts_2d.append(proj)
+                else:
+                    break
+
+            if len(pts_2d) != len(face) or not is_face_visible(pts_2d):
+                continue
+
+            if is_point_inside(mouse_pos, pts_2d):
+                avg_z = sum(
+                    self._rotated_vertices[v][2] for v in face
+                ) / len(face)
+                if avg_z < best_z:
+                    best_z = avg_z
+                    best_face = face
+
+        if best_face is not None:
+            return self._get_cube_for_face(best_face)
+
+        min_dist = float("inf")
+        best_edge: tuple[int, int] | None = None
+        for s, e in self.edges:
+            p1 = self._projected_vertices[s]
+            p2 = self._projected_vertices[e]
+            if p1 is not None and p2 is not None:
+                d = self._dist_to_segment(mouse_pos, p1, p2)
+                if d < 12 and d < min_dist:
+                    min_dist = d
+                    best_edge = (s, e)
+
+        if best_edge is not None:
+            for idx in range(len(self.added_cubes) - 1, -1, -1):
+                if (
+                    best_edge[0] in self.added_cubes[idx]["new_verts"]
+                    or best_edge[1] in self.added_cubes[idx]["new_verts"]
+                ):
+                    return idx + 1
+            return 0
+
+        return None
 
     def add_cube_on_face(self, face_idx: int) -> None:
         """Ajoute un nouveau cube de taille par défaut sur la face spécifiée."""
@@ -269,6 +349,8 @@ class App:
                     self.vertices.pop()
 
         self.hovered_face = None
+        self.hovered_cube = None
+        self.selected_cube_idx = None
         self.selected_edge = None
         self.selected_point = None
         self.selected_face = None
@@ -278,56 +360,6 @@ class App:
         pg.display.set_caption(info)
         print(info)
         return True
-
-    def _handle_click(self, mouse_pos: tuple[int, int]) -> None:
-        """Détecte la face cliquée et affiche les coordonnées 3D du clic."""
-        focal_length: float = HEIGHT * 0.9
-        best_hit: tuple[float, int, float, float, float] | None = None
-
-        for index, face in enumerate(self.faces):
-            pts_2d: list[tuple[int, int]] = []
-            for vertex_idx in face:
-                if vertex_idx < len(self._projected_vertices):
-                    proj = self._projected_vertices[vertex_idx]
-                    if proj is None:
-                        break
-                    pts_2d.append(proj)
-                else:
-                    break
-
-            if len(pts_2d) != len(face) or not is_face_visible(pts_2d):
-                continue
-
-            if is_point_inside(mouse_pos, pts_2d):
-                area: float = polygon_area(pts_2d)
-                a = self._rotated_vertices[face[0]]
-                b = self._rotated_vertices[face[1]]
-                c = self._rotated_vertices[face[-1]]
-                hit = intersect_ray_face(
-                    mouse_pos,
-                    WIDTH,
-                    HEIGHT,
-                    focal_length,
-                    self.camera_distance,
-                    a,
-                    b,
-                    c,
-                )
-                if hit is not None:
-                    x, y, z = hit
-                    if best_hit is None or z < best_hit[0]:
-                        best_hit = (z, index, area, x, y)
-
-        if best_hit is not None:
-            z, index, area, x, y = best_hit
-            self.selected_face = (index, area, x, y, z)
-            info: str = (
-                f"{SCENE.name} | Face #{index} | "
-                f"Aire: {area:.0f} px² | "
-                f"Point 3D: x={x:.2f}, y={y:.2f}, z={z:.2f}"
-            )
-            pg.display.set_caption(info)
-            print(info)
 
     def handle_event(self, event: pg.event.Event) -> bool:
         if event.type == pg.QUIT:
@@ -364,42 +396,75 @@ class App:
                     pg.display.set_caption("Mode RETRAIT CUBE désactivé")
                 return True
 
-            # Clic sur les boutons de sélection en haut à gauche
+            # Clic sur le bouton "Cube" (sélection d'un cube individuel)
             if self.btn_cube.collidepoint(mouse_pos):
                 self.add_cube_mode = False
                 self.remove_cube_mode = False
-                self.selection_mode = "cube"
-                self.selected_cube = True
-                self.selected_edge = None
-                self.selected_point = None
-                self.selected_face = None
-                pg.display.set_caption("Mode CUBE - Cube sélectionné en jaune")
+                if self.selection_mode == "cube":
+                    self.selection_mode = None
+                    self.selected_cube_idx = None
+                else:
+                    self.selection_mode = "cube"
+                    self.selected_cube_idx = None
+                    self.selected_edge = None
+                    self.selected_point = None
+                    self.selected_face = None
+                    pg.display.set_caption(
+                        "Mode CUBE - Cliquez sur un cube pour le sélectionner"
+                    )
                 return True
 
+            # Clic sur le bouton "Arête"
             if self.btn_edge.collidepoint(mouse_pos):
                 self.add_cube_mode = False
                 self.remove_cube_mode = False
-                self.selection_mode = "edge"
-                self.selected_cube = False
-                self.selected_edge = None
-                self.selected_point = None
-                self.selected_face = None
-                pg.display.set_caption(
-                    "Mode ARÊTE - Cliquez sur une arête pour la sélectionner"
-                )
+                if self.selection_mode == "edge":
+                    self.selection_mode = None
+                    self.selected_edge = None
+                else:
+                    self.selection_mode = "edge"
+                    self.selected_cube_idx = None
+                    self.selected_edge = None
+                    self.selected_point = None
+                    self.selected_face = None
+                    pg.display.set_caption(
+                        "Mode ARÊTE - Cliquez sur une arête pour la sélectionner"
+                    )
                 return True
 
+            # Clic sur le bouton "Point"
             if self.btn_point.collidepoint(mouse_pos):
                 self.add_cube_mode = False
                 self.remove_cube_mode = False
-                self.selection_mode = "point"
-                self.selected_cube = False
-                self.selected_edge = None
-                self.selected_point = None
-                self.selected_face = None
-                pg.display.set_caption(
-                    "Mode POINT - Cliquez sur un point pour le sélectionner"
-                )
+                if self.selection_mode == "point":
+                    self.selection_mode = None
+                    self.selected_point = None
+                else:
+                    self.selection_mode = "point"
+                    self.selected_cube_idx = None
+                    self.selected_edge = None
+                    self.selected_point = None
+                    self.selected_face = None
+                    pg.display.set_caption(
+                        "Mode POINT - Cliquez sur un point pour le sélectionner"
+                    )
+                return True
+
+            # Clic sur le bouton "Tout" (sélectionner tous les cubes)
+            if self.btn_all.collidepoint(mouse_pos):
+                self.add_cube_mode = False
+                self.remove_cube_mode = False
+                if self.selection_mode == "all":
+                    self.selection_mode = None
+                else:
+                    self.selection_mode = "all"
+                    self.selected_cube_idx = None
+                    self.selected_edge = None
+                    self.selected_point = None
+                    self.selected_face = None
+                    pg.display.set_caption(
+                        "Mode TOUT - Tous les cubes sont sélectionnés en jaune"
+                    )
                 return True
 
             # Clic en mode ajout de cube : greffer le cube sur la face cliquée
@@ -467,7 +532,7 @@ class App:
                     self.remove_cube_at_face(-1)
                     return True
 
-            # Sélection selon le mode actif
+            # Sélection selon le mode actif (uniquement si un bouton est activé)
             if self.selection_mode == "point":
                 closest_idx = None
                 min_dist = float("inf")
@@ -513,12 +578,15 @@ class App:
                 return True
 
             if self.selection_mode == "cube":
-                self.selected_cube = True
-                pg.display.set_caption("Cube sélectionné en jaune")
+                clicked_cube = self._find_cube_at_pos(mouse_pos)
+                if clicked_cube is not None:
+                    self.selected_cube_idx = clicked_cube
+                    info = f"Cube #{clicked_cube} sélectionné en jaune"
+                    pg.display.set_caption(info)
+                    print(info)
                 return True
 
-            # Mode sans sélection spécifique (sélection des faces par défaut)
-            self._handle_click(mouse_pos)
+            # Si aucun mode de sélection n'est actif, le clic ne sélectionne rien
 
         return True
 
@@ -530,11 +598,6 @@ class App:
         self.angles[1] += (keys[pg.K_q] - keys[pg.K_d]) * turn_speed
         self.angles[2] += (keys[pg.K_a] - keys[pg.K_e]) * turn_speed
 
-        rotation: Matrix = (
-            Matrix.rotation_z(self.angles[2])
-            @ Matrix.rotation_y(self.angles[1])
-            @ Matrix.rotation_x(self.angles[0])
-        )
         zoom_speed: float = 3.0 * delta_time
         self.camera_distance += (
             keys[pg.K_DOWN] - keys[pg.K_UP]
@@ -545,6 +608,7 @@ class App:
 
         # Calcul du survol (hover)
         mouse_pos = pg.mouse.get_pos()
+        self.hovered_cube = None
         self.hovered_edge = None
         self.hovered_point = None
         self.hovered_face = None
@@ -574,8 +638,12 @@ class App:
                         best_z = avg_z
                         self.hovered_face = (f_idx, pts_2d)
 
-        # 2. Survol d'une arête en mode arête
-        if self.selection_mode == "edge":
+        # 2. Survol d'un cube en mode cube
+        if self.selection_mode == "cube":
+            self.hovered_cube = self._find_cube_at_pos(mouse_pos)
+
+        # 3. Survol d'une arête en mode arête
+        elif self.selection_mode == "edge":
             min_dist = float("inf")
             for idx, (s, e) in enumerate(self.edges):
                 p1 = self._projected_vertices[s]
@@ -586,7 +654,7 @@ class App:
                         min_dist = d
                         self.hovered_edge = idx
 
-        # 3. Survol d'un point en mode point
+        # 4. Survol d'un point en mode point
         elif self.selection_mode == "point":
             min_dist = float("inf")
             for idx, pt in enumerate(self._projected_vertices):
@@ -615,6 +683,13 @@ class App:
             pg.draw.polygon(overlay, (255, 220, 50, 180), face_pts, 2)
             screen.blit(overlay, (0, 0))
 
+        sel_cube_verts, sel_cube_edges = self._get_cube_data(
+            self.selected_cube_idx
+        )
+        hov_cube_verts, hov_cube_edges = self._get_cube_data(
+            self.hovered_cube
+        )
+
         # 1. Tracé des arêtes
         for idx, (start, end) in enumerate(self.edges):
             p1 = self._projected_vertices[start]
@@ -625,9 +700,19 @@ class App:
             color = COLOR_DEFAULT
             width = 2
 
-            if self.selection_mode == "cube":
-                color = YELLOW_BRIGHT if self.selected_cube else YELLOW_SELECTABLE
-                width = 3 if self.selected_cube else 2
+            if self.selection_mode == "all":
+                color = YELLOW_BRIGHT
+                width = 3
+            elif self.selection_mode == "cube":
+                if (start, end) in sel_cube_edges:
+                    color = YELLOW_BRIGHT
+                    width = 4
+                elif (start, end) in hov_cube_edges:
+                    color = YELLOW_BRIGHT
+                    width = 3
+                else:
+                    color = YELLOW_SELECTABLE
+                    width = 2
             elif self.selection_mode == "edge":
                 if idx == self.selected_edge:
                     color = YELLOW_BRIGHT
@@ -638,9 +723,6 @@ class App:
                 else:
                     color = YELLOW_SELECTABLE
                     width = 2
-            elif idx == self.selected_edge:
-                color = YELLOW_BRIGHT
-                width = 4
 
             pg.draw.line(screen, color, p1, p2, width)
 
@@ -649,8 +731,13 @@ class App:
             if pt is None:
                 continue
 
-            if self.selection_mode == "cube" and self.selected_cube:
+            if self.selection_mode == "all":
                 pg.draw.circle(screen, YELLOW_BRIGHT, pt, 5)
+            elif self.selection_mode == "cube":
+                if idx in sel_cube_verts:
+                    pg.draw.circle(screen, YELLOW_BRIGHT, pt, 6)
+                elif idx in hov_cube_verts:
+                    pg.draw.circle(screen, YELLOW_BRIGHT, pt, 5)
             elif self.selection_mode == "point":
                 if idx == self.selected_point:
                     pg.draw.circle(screen, YELLOW_BRIGHT, pt, 8)
@@ -659,9 +746,6 @@ class App:
                     pg.draw.circle(screen, YELLOW_BRIGHT, pt, 7)
                 else:
                     pg.draw.circle(screen, YELLOW_SELECTABLE, pt, 5)
-            elif idx == self.selected_point:
-                pg.draw.circle(screen, YELLOW_BRIGHT, pt, 8)
-                pg.draw.circle(screen, (255, 255, 255), pt, 12, 2)
 
         # 3. Tracé des boutons UI (haut gauche + haut droite)
         self._draw_buttons(screen)
@@ -671,8 +755,9 @@ class App:
 
     def _get_general_info_text(self) -> str:
         """Informations globales de l'objet et de la scène (visibles en permanence)."""
+        nb_cubes = 1 + len(self.added_cubes)
         return (
-            f"Objet : {SCENE.name}   |   "
+            f"Objet : {SCENE.name} ({nb_cubes} cube{'s' if nb_cubes > 1 else ''})   |   "
             f"{len(self.vertices)} sommets   |   "
             f"{len(self.edges)} arêtes   |   "
             f"{len(self.faces)} faces   |   "
@@ -692,6 +777,32 @@ class App:
                 f_idx = self.hovered_face[0]
                 return f"Mode Retrait Cube : Cliquez sur la face #{f_idx} (en jaune) pour retirer le cube"
             return "Mode Retrait Cube actif : Survolez une face en jaune puis cliquez pour retirer le cube"
+
+        if self.selection_mode == "all":
+            nb_cubes = 1 + len(self.added_cubes)
+            return (
+                f"Sélection : Tous les cubes ({nb_cubes} cube{'s' if nb_cubes > 1 else ''})   |   "
+                f"{len(self.vertices)} sommets   |   "
+                f"{len(self.edges)} arêtes   |   "
+                f"{len(self.faces)} faces"
+            )
+
+        if self.selection_mode == "cube" and self.selected_cube_idx is not None:
+            c_idx = self.selected_cube_idx
+            c_verts, _ = self._get_cube_data(c_idx)
+            if c_verts:
+                cx = sum(self._rotated_vertices[v][0] for v in c_verts) / len(c_verts)
+                cy = sum(self._rotated_vertices[v][1] for v in c_verts) / len(c_verts)
+                cz = sum(self._rotated_vertices[v][2] for v in c_verts) / len(c_verts)
+                ox = sum(self.vertices[v][0] for v in c_verts) / len(c_verts)
+                oy = sum(self.vertices[v][1] for v in c_verts) / len(c_verts)
+                oz = sum(self.vertices[v][2] for v in c_verts) / len(c_verts)
+                return (
+                    f"Sélection : Cube #{c_idx}   |   "
+                    f"Centre 3D tourné : ({cx:+.2f}, {cy:+.2f}, {cz:+.2f})   |   "
+                    f"Centre 3D repos : ({ox:+.2f}, {oy:+.2f}, {oz:+.2f})   |   "
+                    f"8 sommets, 12 arêtes"
+                )
 
         if self.selection_mode == "point" and self.selected_point is not None:
             idx = self.selected_point
@@ -728,25 +839,12 @@ class App:
             r2 = self._rotated_vertices[e]
             return (
                 f"Sélection : Arête #{idx}   |   "
-                f"Sommet {s} ({r1[0]:+.2f}, {r1[1]:+.2f}, {r1[2]:+.2f}) "
-                f"➔ Sommet {e} ({r2[0]:+.2f}, {r2[1]:+.2f}, {r2[2]:+.2f})   |   "
+                f"Sommet {s} ({r1[0]:+.2f}, {r1[1]:+.2f}, {r1[2]:+.2f}) ; "
+                f"Sommet {e} ({r2[0]:+.2f}, {r2[1]:+.2f}, {r2[2]:+.2f})   |   "
                 f"Longueur 3D : {length:.2f}"
             )
 
-        if self.selection_mode == "cube" and self.selected_cube:
-            return (
-                f"Sélection : Forme entière ({len(self.vertices)} sommets, {len(self.edges)} arêtes)"
-            )
-
-        if self.selected_face is not None:
-            f_idx, area, x, y, z = self.selected_face
-            return (
-                f"Sélection : Face #{f_idx}   |   "
-                f"Aire projetée : {area:.0f} px²   |   "
-                f"Impact 3D (Gauss) : ({x:+.2f}, {y:+.2f}, {z:+.2f})"
-            )
-
-        return "Sélection : Aucun élément sélectionné (cliquez sur Cube, Arête ou Point)"
+        return "Sélection : Aucun élément sélectionné (cliquez sur Cube, Arête, Point ou Tout)"
 
     def _draw_bottom_info(self, screen: pg.Surface) -> None:
         """Affiche les informations globales et de l'élément sélectionné centrées en bas d'écran."""
@@ -808,6 +906,7 @@ class App:
 
         # 1. Boutons en haut à gauche
         buttons_left = [
+            ("all", "Tout", self.btn_all),
             ("cube", "Cube", self.btn_cube),
             ("edge", "Arête", self.btn_edge),
             ("point", "Point", self.btn_point),
@@ -872,8 +971,13 @@ class App:
             status_msg = "Mode AJOUT CUBE : cliquez sur une face survolée en jaune"
         elif self.remove_cube_mode:
             status_msg = "Mode RETRAIT CUBE : cliquez sur une face en jaune pour retirer le cube"
+        elif self.selection_mode == "all":
+            status_msg = "Mode TOUT actif : tous les cubes sont sélectionnés en jaune"
         elif self.selection_mode == "cube":
-            status_msg = "Mode CUBE actif : le cube est sélectionné en jaune"
+            if self.selected_cube_idx is not None:
+                status_msg = f"Cube #{self.selected_cube_idx} sélectionné"
+            else:
+                status_msg = "Mode CUBE : survolez/cliquez sur un cube en jaune"
         elif self.selection_mode == "edge":
             if self.selected_edge is not None:
                 s, e = self.edges[self.selected_edge]
