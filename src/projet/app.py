@@ -18,20 +18,16 @@ if __package__ is None or __package__ == "":
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
     from src.projet.geometry import (
-        intersect_ray_face,
         is_face_visible,
         is_point_inside,
-        polygon_area,
     )
     from src.projet.matrix import Matrix
     from src.projet.parser import Scene, load_scene
     from src.projet.window import HEIGHT, WIDTH, Window
 else:
     from .geometry import (
-        intersect_ray_face,
         is_face_visible,
         is_point_inside,
-        polygon_area,
     )
     from .matrix import Matrix
     from .parser import Scene, load_scene
@@ -40,7 +36,11 @@ else:
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_SCENE_FILE = REPO_ROOT / "scenes" / "cube.txt"
-SCENE_PATH = DEFAULT_SCENE_FILE if DEFAULT_SCENE_FILE.exists() else Path("scenes/cube.txt")
+SCENE_PATH = (
+    DEFAULT_SCENE_FILE
+    if DEFAULT_SCENE_FILE.exists()
+    else Path("scenes/cube.txt")
+)
 
 SCENE: Scene = load_scene(str(SCENE_PATH))
 
@@ -92,7 +92,9 @@ class App:
     def _dist_to_segment(
         p: tuple[int, int], a: tuple[int, int], b: tuple[int, int]
     ) -> float:
-        """Calcule la distance entre un point 2D et un segment de droite [a, b]."""
+        """Calcule la distance entre un point 2D et un segment de droite
+        [a, b].
+        """
         px, py = p
         ax, ay = a
         bx, by = b
@@ -119,7 +121,9 @@ class App:
     def _get_cube_data(
         self, cube_idx: int | None
     ) -> tuple[set[int], set[tuple[int, int]]]:
-        """Retourne l'ensemble des sommets et des arêtes appartenant à un cube donné."""
+        """Retourne l'ensemble des sommets et des arêtes appartenant à un
+        cube donné.
+        """
         if cube_idx is None:
             return set(), set()
         if cube_idx == 0:
@@ -137,7 +141,9 @@ class App:
         return set(), set()
 
     def _get_cube_for_face(self, face: tuple[int, ...]) -> int:
-        """Retourne l'indice du cube (0 pour le cube de base, 1+ pour les ajoutés) auquel appartient la face."""
+        """Retourne l'indice du cube (0 pour le cube de base, 1+ pour les
+        ajoutés) auquel appartient la face.
+        """
         for idx in range(len(self.added_cubes) - 1, -1, -1):
             if any(v in self.added_cubes[idx]["new_verts"] for v in face):
                 return idx + 1
@@ -206,7 +212,8 @@ class App:
         pts = [self.vertices[i] for i in face]
         p0, p1, p2, p3 = pts[0], pts[1], pts[2], pts[3]
 
-        # Taille de côté par défaut (distance entre les 2 premiers sommets de la face)
+        # Taille de côté par défaut (distance entre les 2 premiers sommets
+        # de la face).
         s = (
             (p1[0] - p0[0]) ** 2
             + (p1[1] - p0[1]) ** 2
@@ -306,9 +313,14 @@ class App:
             self._projected_vertices.append(self._project(rotated))
 
     def remove_cube_at_face(self, face_idx: int) -> bool:
-        """Retire le cube associé à la face sélectionnée (ou le dernier cube ajouté)."""
+        """Retire le cube associé à la face sélectionnée (ou le dernier cube
+        ajouté).
+        """
         if not self.added_cubes:
-            info = "Impossible de retirer le cube principal : au moins 1 cube requis"
+            info = (
+                "Impossible de retirer le cube principal : "
+                "au moins 1 cube requis"
+            )
             pg.display.set_caption(info)
             print(info)
             return False
@@ -356,7 +368,10 @@ class App:
         self.selected_face = None
         self._recompute_projection()
 
-        info = f"Cube retiré avec succès ({len(self.vertices)} sommets restants)"
+        info = (
+            f"Cube retiré avec succès "
+            f"({len(self.vertices)} sommets restants)"
+        )
         pg.display.set_caption(info)
         print(info)
         return True
@@ -377,7 +392,8 @@ class App:
                 if self.add_cube_mode:
                     self.selection_mode = None
                     pg.display.set_caption(
-                        "Mode AJOUT CUBE actif : survolez une face en jaune puis cliquez dessus"
+                        "Mode AJOUT CUBE actif : survolez une face en jaune "
+                        "puis cliquez dessus"
                     )
                 else:
                     pg.display.set_caption("Mode AJOUT CUBE désactivé")
@@ -390,7 +406,8 @@ class App:
                 if self.remove_cube_mode:
                     self.selection_mode = None
                     pg.display.set_caption(
-                        "Mode RETRAIT CUBE actif : cliquez sur une face en jaune pour retirer le cube"
+                        "Mode RETRAIT CUBE actif : cliquez sur une face en "
+                        "jaune pour retirer le cube"
                     )
                 else:
                     pg.display.set_caption("Mode RETRAIT CUBE désactivé")
@@ -428,7 +445,8 @@ class App:
                     self.selected_point = None
                     self.selected_face = None
                     pg.display.set_caption(
-                        "Mode ARÊTE - Cliquez sur une arête pour la sélectionner"
+                        "Mode ARÊTE - Cliquez sur une arête pour la "
+                        "sélectionner"
                     )
                 return True
 
@@ -572,7 +590,10 @@ class App:
                 if closest_edge is not None and min_dist <= 15:
                     self.selected_edge = closest_edge
                     s, e = self.edges[closest_edge]
-                    info = f"Arête #{closest_edge} sélectionnée en jaune (sommets {s}-{e})"
+                    info = (
+                        f"Arête #{closest_edge} sélectionnée en jaune "
+                        f"(sommets {s}-{e})"
+                    )
                     pg.display.set_caption(info)
                     print(info)
                 return True
@@ -586,7 +607,7 @@ class App:
                     print(info)
                 return True
 
-            # Si aucun mode de sélection n'est actif, le clic ne sélectionne rien
+            # Sans mode de sélection actif, le clic ne sélectionne rien.
 
         return True
 
@@ -613,7 +634,7 @@ class App:
         self.hovered_point = None
         self.hovered_face = None
 
-        # 1. Survol d'une face : uniquement lorsque le mode ajout ou retrait de cube est activé
+        # 1. Survol d'une face, en mode ajout ou retrait de cube uniquement.
         if self.add_cube_mode or self.remove_cube_mode:
             best_z = float("inf")
             for f_idx, face in enumerate(self.faces):
@@ -670,13 +691,18 @@ class App:
         return self._projected_vertices
 
     def draw(self, screen: pg.Surface) -> None:
-        """Dessine les éléments 3D en fonction du mode de sélection et les boutons."""
+        """Dessine les éléments 3D en fonction du mode de sélection et les
+        boutons.
+        """
         YELLOW_SELECTABLE = (220, 200, 70)
         YELLOW_BRIGHT = (255, 255, 0)
         COLOR_DEFAULT = (200, 215, 240)
 
-        # 0. Tracé de la face survolée (uniquement avec le bouton +Cube ou -Cube pressé)
-        if (self.add_cube_mode or self.remove_cube_mode) and self.hovered_face is not None:
+        # 0. Tracé de la face survolée en mode ajout ou retrait.
+        if (
+            (self.add_cube_mode or self.remove_cube_mode)
+            and self.hovered_face is not None
+        ):
             _, face_pts = self.hovered_face
             overlay = pg.Surface((WIDTH, HEIGHT), pg.SRCALPHA)
             pg.draw.polygon(overlay, (255, 235, 80, 80), face_pts)
@@ -754,10 +780,13 @@ class App:
         self._draw_bottom_info(screen)
 
     def _get_general_info_text(self) -> str:
-        """Informations globales de l'objet et de la scène (visibles en permanence)."""
+        """Informations globales de l'objet et de la scène (visibles en
+        permanence).
+        """
         nb_cubes = 1 + len(self.added_cubes)
         return (
-            f"Objet : {SCENE.name} ({nb_cubes} cube{'s' if nb_cubes > 1 else ''})   |   "
+            f"Objet : {SCENE.name} "
+            f"({nb_cubes} cube{'s' if nb_cubes > 1 else ''})   |   "
             f"{len(self.vertices)} sommets   |   "
             f"{len(self.edges)} arêtes   |   "
             f"{len(self.faces)} faces   |   "
@@ -769,19 +798,32 @@ class App:
         if self.add_cube_mode:
             if self.hovered_face is not None:
                 f_idx = self.hovered_face[0]
-                return f"Mode Ajout Cube : Cliquez sur la face #{f_idx} (en jaune) pour y greffer un cube"
-            return "Mode Ajout Cube actif : Survolez une face en jaune puis cliquez dessus"
+                return (
+                    f"Mode Ajout Cube : Cliquez sur la face #{f_idx} "
+                    "(en jaune) pour y greffer un cube"
+                )
+            return (
+                "Mode Ajout Cube actif : Survolez une face en jaune "
+                "puis cliquez dessus"
+            )
 
         if self.remove_cube_mode:
             if self.hovered_face is not None:
                 f_idx = self.hovered_face[0]
-                return f"Mode Retrait Cube : Cliquez sur la face #{f_idx} (en jaune) pour retirer le cube"
-            return "Mode Retrait Cube actif : Survolez une face en jaune puis cliquez pour retirer le cube"
+                return (
+                    f"Mode Retrait Cube : Cliquez sur la face #{f_idx} "
+                    "(en jaune) pour retirer le cube"
+                )
+            return (
+                "Mode Retrait Cube actif : Survolez une face en jaune "
+                "puis cliquez pour retirer le cube"
+            )
 
         if self.selection_mode == "all":
             nb_cubes = 1 + len(self.added_cubes)
             return (
-                f"Sélection : Tous les cubes ({nb_cubes} cube{'s' if nb_cubes > 1 else ''})   |   "
+                f"Sélection : Tous les cubes "
+                f"({nb_cubes} cube{'s' if nb_cubes > 1 else ''})   |   "
                 f"{len(self.vertices)} sommets   |   "
                 f"{len(self.edges)} arêtes   |   "
                 f"{len(self.faces)} faces"
@@ -791,16 +833,27 @@ class App:
             c_idx = self.selected_cube_idx
             c_verts, _ = self._get_cube_data(c_idx)
             if c_verts:
-                cx = sum(self._rotated_vertices[v][0] for v in c_verts) / len(c_verts)
-                cy = sum(self._rotated_vertices[v][1] for v in c_verts) / len(c_verts)
-                cz = sum(self._rotated_vertices[v][2] for v in c_verts) / len(c_verts)
+                cx = (
+                    sum(self._rotated_vertices[v][0] for v in c_verts)
+                    / len(c_verts)
+                )
+                cy = (
+                    sum(self._rotated_vertices[v][1] for v in c_verts)
+                    / len(c_verts)
+                )
+                cz = (
+                    sum(self._rotated_vertices[v][2] for v in c_verts)
+                    / len(c_verts)
+                )
                 ox = sum(self.vertices[v][0] for v in c_verts) / len(c_verts)
                 oy = sum(self.vertices[v][1] for v in c_verts) / len(c_verts)
                 oz = sum(self.vertices[v][2] for v in c_verts) / len(c_verts)
                 return (
                     f"Sélection : Cube #{c_idx}   |   "
-                    f"Centre 3D tourné : ({cx:+.2f}, {cy:+.2f}, {cz:+.2f})   |   "
-                    f"Centre 3D repos : ({ox:+.2f}, {oy:+.2f}, {oz:+.2f})   |   "
+                    f"Centre 3D tourné : "
+                    f"({cx:+.2f}, {cy:+.2f}, {cz:+.2f})   |   "
+                    f"Centre 3D repos : "
+                    f"({ox:+.2f}, {oy:+.2f}, {oz:+.2f})   |   "
                     f"8 sommets, 12 arêtes"
                 )
 
@@ -820,8 +873,10 @@ class App:
             conn_str = ", ".join(connected)
             return (
                 f"Sélection : Point #{idx}   |   "
-                f"3D tourné : ({p3d[0]:+.2f}, {p3d[1]:+.2f}, {p3d[2]:+.2f})   |   "
-                f"3D repos : ({orig[0]:+.2f}, {orig[1]:+.2f}, {orig[2]:+.2f})   |   "
+                f"3D tourné : "
+                f"({p3d[0]:+.2f}, {p3d[1]:+.2f}, {p3d[2]:+.2f})   |   "
+                f"3D repos : "
+                f"({orig[0]:+.2f}, {orig[1]:+.2f}, {orig[2]:+.2f})   |   "
                 f"{proj_str}   |   Arêtes : [{conn_str}]"
             )
 
@@ -839,15 +894,22 @@ class App:
             r2 = self._rotated_vertices[e]
             return (
                 f"Sélection : Arête #{idx}   |   "
-                f"Sommet {s} ({r1[0]:+.2f}, {r1[1]:+.2f}, {r1[2]:+.2f}) ; "
-                f"Sommet {e} ({r2[0]:+.2f}, {r2[1]:+.2f}, {r2[2]:+.2f})   |   "
+                f"Sommet {s} "
+                f"({r1[0]:+.2f}, {r1[1]:+.2f}, {r1[2]:+.2f}) ; "
+                f"Sommet {e} "
+                f"({r2[0]:+.2f}, {r2[1]:+.2f}, {r2[2]:+.2f})   |   "
                 f"Longueur 3D : {length:.2f}"
             )
 
-        return "Sélection : Aucun élément sélectionné (cliquez sur Cube, Arête, Point ou Tout)"
+        return (
+            "Sélection : Aucun élément sélectionné "
+            "(cliquez sur Cube, Arête, Point ou Tout)"
+        )
 
     def _draw_bottom_info(self, screen: pg.Surface) -> None:
-        """Affiche les informations globales et de l'élément sélectionné centrées en bas d'écran."""
+        """Affiche les informations globales et de l'élément sélectionné
+        centrées en bas d'écran.
+        """
         if self._info_font is None:
             self._info_font = pg.font.SysFont(
                 "Segoe UI, Arial, sans-serif", 13, bold=True
@@ -897,10 +959,16 @@ class App:
         screen.blit(surf_selected, r_selected)
 
     def _draw_buttons(self, screen: pg.Surface) -> None:
-        """Affiche les boutons à gauche et les boutons d'ajout/retrait à droite."""
+        """Affiche les boutons à gauche et les boutons d'ajout/retrait à
+        droite.
+        """
         if self._font is None:
-            self._font = pg.font.SysFont("Segoe UI, Arial, sans-serif", 14, bold=True)
-            self._small_font = pg.font.SysFont("Segoe UI, Arial, sans-serif", 12)
+            self._font = pg.font.SysFont(
+                "Segoe UI, Arial, sans-serif", 14, bold=True
+            )
+            self._small_font = pg.font.SysFont(
+                "Segoe UI, Arial, sans-serif", 12
+            )
 
         mouse_pos = pg.mouse.get_pos()
 
@@ -968,11 +1036,18 @@ class App:
         # Message de guidage sous les boutons de gauche
         status_msg = ""
         if self.add_cube_mode:
-            status_msg = "Mode AJOUT CUBE : cliquez sur une face survolée en jaune"
+            status_msg = (
+                "Mode AJOUT CUBE : cliquez sur une face survolée en jaune"
+            )
         elif self.remove_cube_mode:
-            status_msg = "Mode RETRAIT CUBE : cliquez sur une face en jaune pour retirer le cube"
+            status_msg = (
+                "Mode RETRAIT CUBE : cliquez sur une face en jaune "
+                "pour retirer le cube"
+            )
         elif self.selection_mode == "all":
-            status_msg = "Mode TOUT actif : tous les cubes sont sélectionnés en jaune"
+            status_msg = (
+                "Mode TOUT actif : tous les cubes sont sélectionnés en jaune"
+            )
         elif self.selection_mode == "cube":
             if self.selected_cube_idx is not None:
                 status_msg = f"Cube #{self.selected_cube_idx} sélectionné"
@@ -981,9 +1056,14 @@ class App:
         elif self.selection_mode == "edge":
             if self.selected_edge is not None:
                 s, e = self.edges[self.selected_edge]
-                status_msg = f"Arête #{self.selected_edge} sélectionnée (sommets {s}-{e})"
+                status_msg = (
+                    f"Arête #{self.selected_edge} sélectionnée "
+                    f"(sommets {s}-{e})"
+                )
             else:
-                status_msg = "Mode ARÊTE : survolez/cliquez sur une arête en jaune"
+                status_msg = (
+                    "Mode ARÊTE : survolez/cliquez sur une arête en jaune"
+                )
         elif self.selection_mode == "point":
             if self.selected_point is not None:
                 p3d = self._rotated_vertices[self.selected_point]
@@ -992,7 +1072,9 @@ class App:
                     f"({p3d[0]:.2f}, {p3d[1]:.2f}, {p3d[2]:.2f})"
                 )
             else:
-                status_msg = "Mode POINT : survolez/cliquez sur un sommet en jaune"
+                status_msg = (
+                    "Mode POINT : survolez/cliquez sur un sommet en jaune"
+                )
 
         if status_msg and self._small_font is not None:
             msg_surf = self._small_font.render(

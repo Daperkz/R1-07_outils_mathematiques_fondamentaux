@@ -13,7 +13,7 @@ from .app import App
 
 
 def main() -> int:
-    """La fonction principale qui démarre le projet"""
+    """Crée l'application et lance sa boucle graphique."""
     return App().run()
 
 
